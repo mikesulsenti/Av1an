@@ -74,6 +74,7 @@ jobs:
         run: |
           cargo msrv verify --path andean-condor
           cargo msrv verify --path california-condor
+          cargo msrv verify --path condor-vship
 
       - name: Testing Andean Condor
         working-directory: ./andean-condor
@@ -84,6 +85,22 @@ jobs:
         working-directory: ./california-condor
         run: |
           cargo test --profile ci
+
+      # Without a GPU, Vship runs on the CPU with Mesa's lavapipe Vulkan driver
+      - name: Build Vship
+        run: |
+          pacman -S --noconfirm --needed git vulkan-headers vulkan-icd-loader vulkan-swrast
+          git clone --depth 1 --branch v5.1.1 https://codeberg.org/Line-fr/Vship.git /tmp/vship
+          test "$(git -C /tmp/vship rev-parse HEAD)" = "256dc5a85e56e42a88a7a90d641037fdc148b91e"
+          make -C /tmp/vship build BACKEND=Vulkan
+          make -C /tmp/vship install PREFIX=/usr
+
+      - name: Testing Condor Vship
+        working-directory: ./condor-vship
+        env:
+          CONDOR_VSHIP_REQUIRED: 1
+        run: |
+          cargo test --profile ci --all-features
 
   code-coverage:
     needs: [formatting, unit-tests]

@@ -1,51 +1,45 @@
 [package]
-name = "andean-condor"
+name = "condor-vship"
 version = "0.0.1"
 rust-version = "1.97"
 edition = "2024"
-authors = ["Zen <master_of_zen@protonmail.com>", "Boats McGee"]
+authors = ["Boats McGee"]
 description = """
-Cross-platform video processing library and command-line tool for parallel encoding.
+Native Vship GPU metrics (SSIMULACRA2, Butteraugli and CVVDP) for Condor, loaded at runtime
 """
 repository = "https://github.com/BoatsMcGee/Av1an"
-keywords = ["video", "cli", "command-line", "tui", "utility"]
-categories = ["command-line-utilities", "compression", "encoding", "multimedia"]
+keywords = ["video", "metrics", "ssimulacra2", "butteraugli", "gpu"]
+categories = ["multimedia::video"]
 license = "GPL-3.0"
-readme = "./README.md"
+readme = "README.md"
 
 [dependencies]
-anyhow = { workspace = true }
-arrayvec = "0.7.2"
-av-decoders = { workspace = true, features = ["ffms2", "vapoursynth"] }
-av-format = "0.7"
-av-ivf = "0.5.0"
-av-scenechange = { git = "https://github.com/BoatsMcGee/av-scenechange", branch = "av-decoders-0.11.0", version = "0.25", default-features = false, features = [
-    "asm",
-    "vapoursynth",
-] }
-av1-grain = { version = "0.5", default-features = false, features = ["create"] }
-cfg-if = "1.0.4"
+av-decoders = { workspace = true }
 crossbeam-channel = "0.5.15"
-crossbeam-utils = "0.8.5"
-itertools = "0.15.0"
-nom = "8.0.0"
-once_cell = { workspace = true }
-pastey = "0.2.0"
-path_abs = { workspace = true }
-schemars = "1.2.2"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.148"
-simdutf8 = "0.1.5"
-strum = { version = "0.28", features = ["derive"] }
-sysinfo = "0.39"
-textwrap = "0.16.2"
+libloading = "0.9"
 thiserror = "2.0.17"
 tracing = { workspace = true }
-vapoursynth = "0.5"
-which = "8.0.0"
+v_frame = { version = "0.7", features = ["padding_api"] }
+vapoursynth = { version = "0.5", optional = true }
+
+[dev-dependencies]
+criterion = "0.8"
+tempfile = { workspace = true }
 
 [features]
 default = []
+# Decode with ffms2 in `compare_decoders`
+ffms2 = ["av-decoders/ffms2"]
+# Score VapourSynth frames and nodes
+vapoursynth = ["av-decoders/vapoursynth", "dep:vapoursynth"]
+
+[lib]
+# Benchmarks are in benches/, so `cargo bench` arguments only reach criterion
+bench = false
+
+[[bench]]
+name = "metrics"
+harness = false
 
 [lints.clippy]
 # Performance
