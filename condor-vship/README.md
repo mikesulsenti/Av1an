@@ -2,20 +2,20 @@
 
 Native [Vship][vship] GPU metrics for Condor: [SSIMULACRA 2][ssimulacra2], [butteraugli][butteraugli] and [ColorVideoVDP][cvvdp].
 
-Condor Vship calls the Vship library directly instead of going through the Vship VapourSynth plugin. It scores frames from [av-decoders][av-decoders], the same decoders Andean Condor uses, or from VapourSynth frames and nodes with the `vapoursynth` feature.
+Condor Vship calls the Vship library directly instead of going through the Vship VapourSynth plugin. It scores frames from [av-decoders][av-decoders], the same decoders Andean Condor uses, or from VapourSynth frames and nodes with the `vapoursynth` feature. Andean Condor uses it for Target Quality and Quality Check whenever Vship is installed and falls back to the VapourSynth plugins otherwise.
 
 ## Installing Vship
 
 Vship is **loaded at runtime and never linked** into Condor. It is a separate download that you can update on your own without a new Condor build. Vship ships one library for both its API and its VapourSynth plugin, so an installed Vship plugin works too.
 
-`Vship::find` looks for the library in this order:
+Condor looks for the library in this order:
 
-1. The path in the `CONDOR_VSHIP` environment variable. Set it to `none` to disable native Vship.
-2. Next to the running executable: `vship.dll` or `libvship.dll` on Windows, `libvship.so` on Linux.
+1. The path in the `CONDOR_VSHIP` environment variable. Set it to `none` to disable native Vship and use the VapourSynth plugins instead.
+2. Next to the Condor executable: `vship.dll` or `libvship.dll` on Windows, `libvship.so` on Linux.
 3. The system library search path: `PATH` on Windows, `LD_LIBRARY_PATH` and the system library directories on Linux.
 4. The Vship VapourSynth plugin, if VapourSynth has loaded it.
 
-The first library that loads, is Vship 5 or newer, and passes Vship's GPU check is used.
+The first library that loads, is Vship 5 or newer, and passes Vship's GPU check is used. Condor logs which library it uses.
 
 ### Windows
 
@@ -37,7 +37,11 @@ make build BACKEND=Vulkan   # or BACKEND=Cuda, BACKEND=HIP
 sudo make install PREFIX=/usr
 ```
 
-`make install` installs `libvship.so` into the system library directory, where it is found, and links it as a VapourSynth plugin. If you install to another prefix, such as the default `/usr/local`, make sure the library directory is in `LD_LIBRARY_PATH` or the `ld.so` configuration, or point `CONDOR_VSHIP` at the library.
+`make install` installs `libvship.so` into the system library directory, where Condor finds it, and links it as a VapourSynth plugin. If you install to another prefix, such as the default `/usr/local`, make sure the library directory is in `LD_LIBRARY_PATH` or the `ld.so` configuration, or point `CONDOR_VSHIP` at the library.
+
+### Checking the installation
+
+After running Target Quality or Quality Check, look for `Using native Vship` in the Condor log file (`--logs`, `./logs/condor.log` by default). If Vship cannot be loaded, the log explains why after `Native Vship unavailable` and Condor uses the VapourSynth plugins.
 
 ## Using the library
 

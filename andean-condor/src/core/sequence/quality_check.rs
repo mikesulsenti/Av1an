@@ -40,6 +40,7 @@ use crate::{
             vship::{
                 butteraugli::BUTTERAUGLI,
                 cvvdp::CVVDP,
+                native_scores,
                 ssimulacra2::SSIMULACRA2 as VSHIPSSIMULACRA2,
             },
             vszip::{ssimulacra2::SSIMULACRA2, xpsnr::XPSNR},
@@ -489,7 +490,20 @@ impl QualityCheck {
                 } else {
                     (reference_node, distorted_node)
                 };
-                if VSHIPSSIMULACRA2::plugin_is_installed(core) {
+                if let Some(scores) = native_scores(
+                    core,
+                    condor_vship::Metric::SSIMULACRA2,
+                    threads.map_or(4, usize::from),
+                    &reference_node,
+                    &distorted_node,
+                    &compare_progress_tx,
+                    &on_frame,
+                )? {
+                    // The plugin paths consume the sender, the progress relay ends once it is
+                    // dropped
+                    drop(compare_progress_tx);
+                    scores
+                } else if VSHIPSSIMULACRA2::plugin_is_installed(core) {
                     let plugin = VSHIPSSIMULACRA2 {
                         num_stream: threads.map_or(Some(4), |threads| Some(threads as u32)),
                         ..Default::default()
@@ -558,31 +572,51 @@ impl QualityCheck {
                 } else {
                     (reference_node, distorted_node)
                 };
-                let plugin = BUTTERAUGLI {
-                    num_stream: threads.map_or(Some(4), |threads| Some(threads as u32)),
-                    intensity_multiplier: *intensity_multiplier,
-                    q_norm: norm.map(|norm| norm as u32),
-                    ..Default::default()
-                };
-                let node = plugin.invoke(core, &reference_node, &distorted_node)?;
-                let property_names = norm.and_then(|_| Some(BUTTERAUGLI::QNORM_PROPERTY_NAMES));
-                let property_names = property_names.unwrap_or(BUTTERAUGLI::PROPERTY_NAMES);
-                BUTTERAUGLI::collect_frame_values(
-                    &node,
-                    compare_progress_tx,
-                    on_frame,
-                    move |frame| {
-                        property_names
-                            .iter()
-                            .find_map(|property_name| frame.props().get_float(property_name).ok())
-                            .ok_or_else(|| {
-                                BUTTERAUGLI::new_error(format!(
-                                    "Score not found on any of the following properties: {}",
-                                    property_names.join(", ")
-                                ))
-                            })
+                if let Some(scores) = native_scores(
+                    core,
+                    condor_vship::Metric::BUTTERAUGLI {
+                        q_norm:               *norm,
+                        intensity_multiplier: *intensity_multiplier,
                     },
-                )?
+                    threads.map_or(4, usize::from),
+                    &reference_node,
+                    &distorted_node,
+                    &compare_progress_tx,
+                    &on_frame,
+                )? {
+                    // The plugin paths consume the sender, the progress relay ends once it is
+                    // dropped
+                    drop(compare_progress_tx);
+                    scores
+                } else {
+                    let plugin = BUTTERAUGLI {
+                        num_stream: threads.map_or(Some(4), |threads| Some(threads as u32)),
+                        intensity_multiplier: *intensity_multiplier,
+                        q_norm: norm.map(|norm| norm as u32),
+                        ..Default::default()
+                    };
+                    let node = plugin.invoke(core, &reference_node, &distorted_node)?;
+                    let property_names = norm.and_then(|_| Some(BUTTERAUGLI::QNORM_PROPERTY_NAMES));
+                    let property_names = property_names.unwrap_or(BUTTERAUGLI::PROPERTY_NAMES);
+                    BUTTERAUGLI::collect_frame_values(
+                        &node,
+                        compare_progress_tx,
+                        on_frame,
+                        move |frame| {
+                            property_names
+                                .iter()
+                                .find_map(|property_name| {
+                                    frame.props().get_float(property_name).ok()
+                                })
+                                .ok_or_else(|| {
+                                    BUTTERAUGLI::new_error(format!(
+                                        "Score not found on any of the following properties: {}",
+                                        property_names.join(", ")
+                                    ))
+                                })
+                        },
+                    )?
+                }
             },
             QualityMetric::XPSNR {
                 resolution, ..
@@ -647,24 +681,44 @@ impl QualityCheck {
                 } else {
                     (reference_node, distorted_node)
                 };
-                let plugin = CVVDP {
-                    model_name: *display_model,
-                    resize_to_display: *resize_to_display,
-                    disable_temporal: *disable_temporal,
-                    ..Default::default()
-                };
-                let node = plugin.invoke(core, &reference_node, &distorted_node)?;
-                CVVDP::collect_frame_values(&node, compare_progress_tx, on_frame, |frame| {
-                    CVVDP::PROPERTY_NAMES
-                        .iter()
-                        .find_map(|property_name| frame.props().get_float(property_name).ok())
-                        .ok_or_else(|| {
-                            CVVDP::new_error(format!(
-                                "Score not found on any of the following properties: {}",
-                                CVVDP::PROPERTY_NAMES.join(", ")
-                            ))
-                        })
-                })?
+                if let Some(scores) = native_scores(
+                    core,
+                    condor_vship::Metric::CVVDP {
+                        display_model:     display_model.map(|model| model.to_string()),
+                        model_config_json: None,
+                        resize_to_display: resize_to_display.unwrap_or(false),
+                        disable_temporal:  disable_temporal.unwrap_or(false),
+                    },
+                    1,
+                    &reference_node,
+                    &distorted_node,
+                    &compare_progress_tx,
+                    &on_frame,
+                )? {
+                    // The plugin paths consume the sender, the progress relay ends once it is
+                    // dropped
+                    drop(compare_progress_tx);
+                    scores
+                } else {
+                    let plugin = CVVDP {
+                        model_name: *display_model,
+                        resize_to_display: *resize_to_display,
+                        disable_temporal: *disable_temporal,
+                        ..Default::default()
+                    };
+                    let node = plugin.invoke(core, &reference_node, &distorted_node)?;
+                    CVVDP::collect_frame_values(&node, compare_progress_tx, on_frame, |frame| {
+                        CVVDP::PROPERTY_NAMES
+                            .iter()
+                            .find_map(|property_name| frame.props().get_float(property_name).ok())
+                            .ok_or_else(|| {
+                                CVVDP::new_error(format!(
+                                    "Score not found on any of the following properties: {}",
+                                    CVVDP::PROPERTY_NAMES.join(", ")
+                                ))
+                            })
+                    })?
+                }
             },
         };
 

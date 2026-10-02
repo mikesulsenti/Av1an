@@ -55,6 +55,7 @@ use crate::{
             vship::{
                 butteraugli::BUTTERAUGLI,
                 cvvdp::CVVDP,
+                native_scores,
                 ssimulacra2::SSIMULACRA2 as VSHIPSSIMULACRA2,
             },
             vszip::{ssimulacra2::SSIMULACRA2, xpsnr::XPSNR},
@@ -1029,7 +1030,20 @@ impl TargetQuality {
                 } else {
                     (reference_node, distorted_node)
                 };
-                if VSHIPSSIMULACRA2::plugin_is_installed(core) {
+                if let Some(scores) = native_scores(
+                    core,
+                    condor_vship::Metric::SSIMULACRA2,
+                    threads.map_or(4, usize::from),
+                    &reference_node,
+                    &distorted_node,
+                    &compare_progress_tx,
+                    |_index, _score| Ok(()),
+                )? {
+                    // The plugin paths consume the sender, the progress relay ends once it is
+                    // dropped
+                    drop(compare_progress_tx);
+                    scores
+                } else if VSHIPSSIMULACRA2::plugin_is_installed(core) {
                     let plugin = VSHIPSSIMULACRA2 {
                         num_stream: threads.map_or(Some(4), |threads| Some(threads as u32)),
                         ..Default::default()
@@ -1064,18 +1078,36 @@ impl TargetQuality {
                 } else {
                     (reference_node, distorted_node)
                 };
-                let plugin = BUTTERAUGLI {
-                    num_stream: threads.map_or(Some(4), |threads| Some(threads as u32)),
-                    intensity_multiplier: *intensity_multiplier,
-                    q_norm: norm.map(|norm| norm as u32),
-                    ..Default::default()
-                };
-                let node = plugin.invoke(core, &reference_node, &distorted_node)?;
-                BUTTERAUGLI::get_scores(
-                    &node,
-                    norm.and_then(|_| Some(BUTTERAUGLI::QNORM_PROPERTY_NAMES)),
-                    compare_progress_tx,
-                )?
+                if let Some(scores) = native_scores(
+                    core,
+                    condor_vship::Metric::BUTTERAUGLI {
+                        q_norm:               *norm,
+                        intensity_multiplier: *intensity_multiplier,
+                    },
+                    threads.map_or(4, usize::from),
+                    &reference_node,
+                    &distorted_node,
+                    &compare_progress_tx,
+                    |_index, _score| Ok(()),
+                )? {
+                    // The plugin paths consume the sender, the progress relay ends once it is
+                    // dropped
+                    drop(compare_progress_tx);
+                    scores
+                } else {
+                    let plugin = BUTTERAUGLI {
+                        num_stream: threads.map_or(Some(4), |threads| Some(threads as u32)),
+                        intensity_multiplier: *intensity_multiplier,
+                        q_norm: norm.map(|norm| norm as u32),
+                        ..Default::default()
+                    };
+                    let node = plugin.invoke(core, &reference_node, &distorted_node)?;
+                    BUTTERAUGLI::get_scores(
+                        &node,
+                        norm.and_then(|_| Some(BUTTERAUGLI::QNORM_PROPERTY_NAMES)),
+                        compare_progress_tx,
+                    )?
+                }
             },
             QualityMetric::XPSNR {
                 resolution, ..
@@ -1128,14 +1160,34 @@ impl TargetQuality {
                 } else {
                     (reference_node, distorted_node)
                 };
-                let plugin = CVVDP {
-                    model_name: *display_model,
-                    resize_to_display: *resize_to_display,
-                    disable_temporal: *disable_temporal,
-                    ..Default::default()
-                };
-                let node = plugin.invoke(core, &reference_node, &distorted_node)?;
-                CVVDP::get_scores(&node, None, compare_progress_tx)?
+                if let Some(scores) = native_scores(
+                    core,
+                    condor_vship::Metric::CVVDP {
+                        display_model:     display_model.map(|model| model.to_string()),
+                        model_config_json: None,
+                        resize_to_display: resize_to_display.unwrap_or(false),
+                        disable_temporal:  disable_temporal.unwrap_or(false),
+                    },
+                    1,
+                    &reference_node,
+                    &distorted_node,
+                    &compare_progress_tx,
+                    |_index, _score| Ok(()),
+                )? {
+                    // The plugin paths consume the sender, the progress relay ends once it is
+                    // dropped
+                    drop(compare_progress_tx);
+                    scores
+                } else {
+                    let plugin = CVVDP {
+                        model_name: *display_model,
+                        resize_to_display: *resize_to_display,
+                        disable_temporal: *disable_temporal,
+                        ..Default::default()
+                    };
+                    let node = plugin.invoke(core, &reference_node, &distorted_node)?;
+                    CVVDP::get_scores(&node, None, compare_progress_tx)?
+                }
             },
         };
         let ended = SystemTime::now();

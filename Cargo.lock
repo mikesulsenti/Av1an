@@ -47,6 +47,7 @@ dependencies = [
  "av-scenechange",
  "av1-grain",
  "cfg-if",
+ "condor-vship",
  "crossbeam-channel",
  "crossbeam-utils",
  "itertools 0.15.0",

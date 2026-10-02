@@ -63,6 +63,14 @@ pub fn init_logging(
         file_enabled: true,
     });
 
+    // Configure native Vship metrics module
+    module_configs.insert("condor_vship", ModuleConfig {
+        console_level,
+        file_level,
+        console_enabled: true,
+        file_enabled: true,
+    });
+
     // Allow override through environment variables
     if let Ok(rust_log) = env::var("RUST_LOG") {
         for directive in rust_log.split(',') {
