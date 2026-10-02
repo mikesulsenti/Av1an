@@ -60,6 +60,24 @@ jobs:
       - name: Condor build
         run: cargo build --release --bin condor
 
+      - name: Download Vship
+        shell: pwsh
+        run: |
+          # Vship is loaded by condor.exe at runtime, users can replace vship.dll with another build
+          $version = "v5.1.1"
+          Invoke-WebRequest "https://codeberg.org/Line-fr/Vship/releases/download/$version/libvship_VULKAN.dll" -OutFile target/release/vship.dll
+          Invoke-WebRequest "https://codeberg.org/Line-fr/Vship/raw/tag/$version/LICENSE" -OutFile target/release/vship-LICENSE.txt
+          $expected = @{
+            "target/release/vship.dll"         = "3dc0d98db6372cf4a80a68861f1dda496bbfd9b543d10bb2714948e5494e8464"
+            "target/release/vship-LICENSE.txt" = "edc6b441f1e996267a48ceca370115fe0f270318d879e3a3ff49887fa7cdd3bf"
+          }
+          foreach ($file in $expected.Keys) {
+            $hash = (Get-FileHash $file -Algorithm SHA256).Hash
+            if ($hash -ne $expected[$file]) {
+              throw "Unexpected SHA-256 for ${file}: $hash"
+            }
+          }
+
       - name: Generate configuration schema
         shell: pwsh
         run: cargo run --release --bin generate-schema > california-condor/configuration.schema.json
@@ -106,6 +124,8 @@ jobs:
           body: ${{ steps.changelog.outputs.body }}
           files: |
             target/release/condor.exe
+            target/release/vship.dll
+            target/release/vship-LICENSE.txt
             california-condor/configuration.schema.json
           fail_on_unmatched_files: true
 
@@ -118,5 +138,7 @@ jobs:
           body: ${{ steps.changelog.outputs.body }}
           files: |
             target/release/condor.exe
+            target/release/vship.dll
+            target/release/vship-LICENSE.txt
             california-condor/configuration.schema.json
           fail_on_unmatched_files: true

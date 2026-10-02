@@ -19,7 +19,9 @@ The first library that loads, is Vship 5 or newer, and passes Vship's GPU check 
 
 ### Windows
 
-Download a build from the [Vship releases][vship-releases] and save it as `vship.dll` next to `condor.exe` (or set `CONDOR_VSHIP` to its path). The Vulkan build works on AMD, Intel and NVIDIA GPUs with current drivers:
+The Windows releases of Condor include `vship.dll`, the Vulkan build of Vship, next to `condor.exe`. Vulkan works on AMD, Intel and NVIDIA GPUs with current drivers.
+
+To use another build, download it from the [Vship releases][vship-releases] and replace `vship.dll` (or set `CONDOR_VSHIP` to its path):
 
 | Release asset         | GPUs                       |
 | --------------------- | -------------------------- |
@@ -38,6 +40,8 @@ sudo make install PREFIX=/usr
 ```
 
 `make install` installs `libvship.so` into the system library directory, where Condor finds it, and links it as a VapourSynth plugin. If you install to another prefix, such as the default `/usr/local`, make sure the library directory is in `LD_LIBRARY_PATH` or the `ld.so` configuration, or point `CONDOR_VSHIP` at the library.
+
+The [Docker image](../README.md#installation) includes the Vulkan build of Vship. Containers need GPU access, such as `--device /dev/dri` or the NVIDIA Container Toolkit.
 
 ### Checking the installation
 
@@ -93,7 +97,7 @@ The benchmarks score synthetic 720p frames with each metric, one frame at a time
 
 Condor Vship is part of Condor and licensed under the GPL-3.0.
 
-The Vship API declarations in [`src/ffi.rs`](src/ffi.rs) are derived from `VshipAPI.h` and `VshipColor.h`, which their author has made available under the MIT license; the notice is included in that file. The Vship library itself is distributed under its own [MIT NON-AI license][vship-license] and is not part of this crate. Builds that redistribute it must include that license next to it.
+The Vship API declarations in [`src/ffi.rs`](src/ffi.rs) are derived from `VshipAPI.h` and `VshipColor.h`, which their author has made available under the MIT license; the notice is included in that file. The Vship library itself is distributed under its own [MIT NON-AI license][vship-license] and is not part of this crate. Builds that redistribute it, like the Windows releases, include that license next to it.
 
 [vship]: https://codeberg.org/Line-fr/Vship "Vship: Fast Metric Computation on GPU"
 [vship-releases]: https://codeberg.org/Line-fr/Vship/releases "Vship releases"

@@ -46,7 +46,7 @@ External tools required for decoding, filtering, encoding, metrics, and concaten
 
 * [Python][python-download] - Recommended for [VapourSynth][vapoursynth-download]
 * [vs-jetpack][vsjetpack] - Installs [VapourSynth][vapoursynth] and plugins for scaling, denoising, debanding, deinterlacing, etc.
-* [Vship][vship] - GPU-accelerated metrics for [SSIMULACRA 2][ssimulacra2], [butteraugli][butteraugli], and [ColorVideoVDP][cvvdp]
+* [Vship][vship] - GPU-accelerated metrics for [SSIMULACRA 2][ssimulacra2], [butteraugli][butteraugli], and [ColorVideoVDP][cvvdp]. Condor uses the Vship library directly when it is installed and the Windows release includes it, see [Installing Vship](../condor-vship/README.md#installing-vship)
 * At least one encoder: [aomenc][aom], [SvtAv1EncApp][svt-av1], [rav1e][rav1e], [avmenc][avm], [vpxenc][vpx], [x264][x264], [x265][x265], [vvenc][vvenc], [FFmpeg][ffmpeg]
 * Either [FFmpeg][ffmpeg] or [MKVToolNix][mkvtoolnix] for concatenating encoded scenes
 

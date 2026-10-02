@@ -10,6 +10,17 @@ RUN python -m pip install --no-cache-dir --break-system-packages vsjetpack[full]
 # Add extra plugins to ENV to cover VS R74 packaging changes
 ENV VAPOURSYNTH_EXTRA_PLUGIN_PATH="/usr/lib/vapoursynth"
 
+# Install Vship (Vulkan) for native GPU metrics, Condor loads it at runtime
+RUN pacman -S --noconfirm --needed git vulkan-headers vulkan-icd-loader && \
+    VSHIP_VERSION="v5.1.1" && \
+    VSHIP_COMMIT="256dc5a85e56e42a88a7a90d641037fdc148b91e" && \
+    git clone --depth 1 --branch "$VSHIP_VERSION" https://codeberg.org/Line-fr/Vship.git /tmp/vship && \
+    test "$(git -C /tmp/vship rev-parse HEAD)" = "$VSHIP_COMMIT" && \
+    make -C /tmp/vship build BACKEND=Vulkan && \
+    make -C /tmp/vship install PREFIX=/usr && \
+    install -Dm644 /tmp/vship/LICENSE /usr/share/licenses/vship/LICENSE && \
+    rm -rf /tmp/vship
+
 # Install ZooMVTools with generic linux binary
 RUN ZOOMVTOOLS_VERSION="v2.0.2" && \
     PLUGIN_DIR="$(python -c 'import site; print(site.getsitepackages()[0])')/vapoursynth/plugins" && \
